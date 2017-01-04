@@ -1,0 +1,104 @@
+#!/bin/sh
+
+######################################################################
+# Prune undesired systemd.debug entries in kernels that are not
+# marked for debugging. See bugzilla 1285601.
+######################################################################
+
+EPOCH_DATE=$(date +"%s")
+
+display_event()
+{
+    EVENT_LABEL="$1"
+    EVENT_DATA="$2"
+    JUSTIFIED_LABEL=$(printf "%-12s" "${EVENT_LABEL}")
+    LOG_TIMESTAMP=$(date +"%s")
+    echo "[${LOG_TIMESTAMP}] ${JUSTIFIED_LABEL}: ${EVENT_DATA}"
+}
+
+exit_event()
+{
+    echo "Exiting script."
+    exit $1
+}
+
+if [[ $EUID -ne 0 ]]; then
+    echo "This script may only run as root."
+    exit_event 1
+fi
+
+######################################################################
+# Back up the grub.cfg for sanity
+######################################################################
+GRUB_CFG=
+GRUB_CFG_BK=
+GRUB_EFI_CFG=
+GRUB_EFI_CFG_BK=
+
+if [ -e "/etc/grub2.cfg" ]; then
+    GRUB_CFG=$(realpath "/etc/grub2.cfg")
+    GRUB_CFG_BK="${GRUB_CFG}.${EPOCH_DATE}.rpmsave"
+fi
+if [ -e "/etc/grub2-efi.cfg" ]; then
+    GRUB_EFI_CFG=$(realpath "/etc/grub2-efi.cfg")
+    GRUB_EFI_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
+fi
+
+if [ -z "${GRUB_EFI_CFG}" ]; then
+    if [ -z "${GRUB_CFG}" ]; then
+        display_event "Error" "Could not find a grub configuration to back up"
+        exit_event 1
+    fi
+fi
+
+if [ -f "${GRUB_EFI_CFG}" ]; then
+    if cp -a "${GRUB_EFI_CFG}" "${GRUB_EFI_CFG_BK}" 2> /dev/null; then
+        display_event "Copied" \
+            "Current configuration backed up to ${GRUB_EFI_CFG_BK}"
+    else
+        display_event "Error" "Could not write ${GRUB_EFI_CFG_BK}"
+        exit_event 1
+    fi
+fi
+
+if [ -f "${GRUB_CFG}" ]; then
+    if cp -a "${GRUB_CFG}" "${GRUB_CFG_BK}" 2> /dev/null; then
+        display_event "Copied" \
+            "Current configuration backed up to ${GRUB_CFG_BK}"
+    else
+        display_event "Error" "Could not write ${GRUB_CFG_BK}"
+        exit_event 1
+    fi
+fi
+
+######################################################################
+# Remove the systemd.debug kernel arguments from non-debug kernels
+######################################################################
+for entry_index in $(grubby --info=ALL|grep "^index"|cut -d '=' -f 2)
+do
+    INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "title=" | cut -d '=' -f 2)
+
+    # do not do anything if this was empty
+    if [ -z "${INDEX_TITLE}" ]; then
+        continue
+    fi
+
+    display_event "Examine" "${INDEX_TITLE}"
+
+    if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
+        display_event "Keep" "Keep debugging arguments for ${INDEX_TITLE}"
+        continue
+    fi
+
+    KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "args=" | cut -d '=' -f 2)
+
+    if echo "${KERNEL_ARGS}" | grep -q "systemd.debug"; then
+            if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
+                    display_event "Update" "Remove debugging arguments for ${INDEX_TITLE}"
+            fi
+    else
+            display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
+    fi
+done
+
+exit_event 0
