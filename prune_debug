@@ -98,7 +98,9 @@ do
 
     if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
             if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
-                    display_event "Update" "Remove debugging arguments for ${INDEX_TITLE}"
+                    display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
+            else
+                    display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
             fi
     else
             display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
