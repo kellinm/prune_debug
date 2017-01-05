@@ -2,7 +2,7 @@
 
 ######################################################################
 # Prune undesired systemd.debug entries in kernels that are not
-# marked for debugging. See bugzilla 1285601.
+# marked for debugging. See Red Hat bugzilla 1285601.
 ######################################################################
 
 EPOCH_DATE=$(date +"%s")
@@ -19,12 +19,14 @@ display_event()
 
 exit_event()
 {
-    echo "Exiting script." >> "${LOG_FILE}"
+    display_event "Exit" "Exiting script"
     exit $1
 }
 
+display_event "Start" "Begin search for extraneous debug arguments"
+
 if [[ $EUID -ne 0 ]]; then
-    echo "This script may only run as root." >> "${LOG_FILE}"
+    display_event "Error" "This script may only run as root."
     exit_event 0
 fi
 
