@@ -40,6 +40,7 @@ if [ -e "/etc/grub2.cfg" ]; then
     GRUB_CFG=$(realpath "/etc/grub2.cfg")
     GRUB_CFG_BK="${GRUB_CFG}.${EPOCH_DATE}.rpmsave"
 fi
+
 if [ -e "/etc/grub2-efi.cfg" ]; then
     GRUB_EFI_CFG=$(realpath "/etc/grub2-efi.cfg")
     GRUB_EFI_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
@@ -91,9 +92,9 @@ do
         continue
     fi
 
-    KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "args=" | cut -d '=' -f 2)
+    KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "args=")
 
-    if echo "${KERNEL_ARGS}" | grep -q "systemd.debug"; then
+    if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
             if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
                     display_event "Update" "Remove debugging arguments for ${INDEX_TITLE}"
             fi
