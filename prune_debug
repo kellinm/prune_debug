@@ -23,6 +23,28 @@ exit_event()
     exit $1
 }
 
+find_entry_by_title()
+{
+    SEARCH_TITLE=$1
+
+    display_event "Examine" "Searching for entry title - ${SEARCH_TITLE}"
+
+    for current_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
+    do
+        CURRENT_TITLE=$(grubby --info="${current_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
+    
+        # do not do anything if this was empty
+        if [ -z "${CURRENT_TITLE}" ]; then
+            continue
+        fi
+
+        if [ "${CURRENT_TITLE}" = "${SEARCH_TITLE}" ]; then
+            echo "${current_index}"
+            break;
+        fi
+    done
+}
+
 display_event "Start" "Begin search for extraneous debug arguments"
 
 if [[ $EUID -ne 0 ]]; then
@@ -77,8 +99,10 @@ fi
 
 
 ######################################################################
-# Remove the systemd.debug kernel arguments from non-debug kernels
+# Remove the systemd.debug kernel arguments from standard non-debug
+# kernel entries only
 ######################################################################
+display_event "Examine" "Searching for distribution provided debugging entries"
 for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
 do
     INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
@@ -88,23 +112,26 @@ do
         continue
     fi
 
-    display_event "Examine" "${INDEX_TITLE}"
-
     if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
-        display_event "Keep" "Keep debugging arguments for ${INDEX_TITLE}"
-        continue
-    fi
+        display_event "Found" "Found distribution provided debugging entry - ${INDEX_TITLE}"
+        NON_DEBUG_TITLE=$(echo "${INDEX_TITLE}" | sed 's/ with debugging$//')
+        NON_DEBUG_INDEX=$(find_entry_by_title "${NON_DEBUG_TITLE}")
 
-    KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "^args=")
-
-    if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
-            if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
-                    display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
+        if [ -n "${NON_DEBUG_INDEX}" ]; then
+            display_event "Found" "Found matching non-debugging entry - ${NON_DEBUG_TITLE}"
+            KERNEL_ARGS=$(grubby --info="${NON_DEBUG_INDEX}" 2> /dev/null |grep "^args=")
+            if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
+                if grubby --update-kernel="${NON_DEBUG_INDEX}" --remove-args="systemd.debug"; then
+                    display_event "Update" "Removed debugging arguments for ${NON_DEBUG_TITLE}"
+                else
+                    display_event "Error" "grubby failed to remove debug argument from ${NON_DEBUG_TITLE}"
+                fi
             else
-                    display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
+                display_event "Skip" "No debugging arguments to remove for ${NON_DEBUG_TITLE}"
             fi
-    else
-            display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
+        else
+            display_event "Error" "Could not find the matching non-debugging entry - ${NON_DEBUG_TITLE}"
+        fi
     fi
 done
 
@@ -126,38 +153,23 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
         exit_event 0
     fi
     shopt -u nocasematch
+
     display_event "Examine" "Search for entry without debugging to replace default entry - ${CURRENT_TITLE}"
 
-    # search for the first non-debugging kernel entry with the same kernel as current
-    for entry_index in $(grubby --info="${CURRENT_KERNEL}"| grep "^index" | sed 's/^index=//')
-    do
-        INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
-        display_event "Examine" "Checking index ${entry_index} - ${INDEX_TITLE} for suitability"
+    unset NON_DEBUG_INDEX
+    unset NON_DEBUG_TITLE
+    NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/ with debugging$//')
+    NON_DEBUG_INDEX=$(find_entry_by_title "${NON_DEBUG_TITLE}")
 
-        # skip if it's a debugging kernel
-        if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
-            display_event "Denied" "${INDEX_TITLE} evaluated and skipped because it is marked debugging"
-            continue
-        fi
-
-        # also skip if it's got debugging arguments
-        KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "^args=")
-        if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
-            display_event "Denied" "${INDEX_TITLE} evaluated and skipped because it contains debugging kernel arguments"
-            continue
-        fi
-
-        if grubby --set-default-index="${entry_index}"; then
-            display_event "Update" "Selected ${INDEX_TITLE} as the new default entry"
-            DEFAULT_CHANGED="TRUE"
+    if [ -n "${NON_DEBUG_INDEX}" ]; then
+        if grubby --set-default-index="${NON_DEBUG_INDEX}"; then
+            display_event "Update" "Selected ${NON_DEBUG_TITLE} as the new default entry"
             break
         else
-            display_event "Error" "Could not set ${INDEX_TITLE} as default, continuing search"
+            display_event "Error" "Could not set ${NON_DEBUG_TITLE} as default"
         fi
-    done
-
-    if [ "${DEFAULT_CHANGED}" = "FALSE" ]; then
-        display_event "Error" "Could not find a suitable default entry without debugging"
+    else
+        display_event "Error" "Could not find the matching non-debugging entry"
     fi
 fi
 
