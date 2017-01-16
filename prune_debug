@@ -78,9 +78,9 @@ fi
 ######################################################################
 # Remove the systemd.debug kernel arguments from non-debug kernels
 ######################################################################
-for entry_index in $(grubby --info=ALL|grep "^index"|cut -d '=' -f 2)
+for entry_index in $(grubby --info=ALL|grep "^index"| sed 's/^index=//')
 do
-    INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "title=" | cut -d '=' -f 2)
+    INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "title=" | sed 's/^title=//')
 
     # do not do anything if this was empty
     if [ -z "${INDEX_TITLE}" ]; then
