@@ -108,4 +108,57 @@ do
     fi
 done
 
+######################################################################
+# The default entry should not have debugging statements
+######################################################################
+
+# source of ALLOW_DEBUGGING_DEFAULT
+[ -f /etc/sysconfig/kernel ] && . /etc/sysconfig/kernel
+
+CURRENT_DEFAULT_INDEX=$(grubby --default-index)
+CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
+CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^kernel=" | sed 's/^kernel=//')
+DEFAULT_CHANGED="FALSE"
+if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
+    shopt -s nocasematch
+    if [ "${ALLOW_DEBUGGING_DEFAULT}" = "YES" ] || [ "${ALLOW_DEBUGGING_DEFAULT}" = "TRUE" ]; then
+        display_event "Examine" "Detected user preference to allow debugging default entries if present"
+        exit_event 0
+    fi
+    shopt -u nocasematch
+    display_event "Examine" "Search for entry without debugging to replace default entry - ${CURRENT_TITLE}"
+
+    # search for the first non-debugging kernel entry with the same kernel as current
+    for entry_index in $(grubby --info="${CURRENT_KERNEL}"| grep "^index" | sed 's/^index=//')
+    do
+        INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
+        display_event "Examine" "Checking index ${entry_index} - ${INDEX_TITLE} for suitability"
+
+        # skip if it's a debugging kernel
+        if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
+            display_event "Denied" "${INDEX_TITLE} evaluated and skipped because it is marked debugging"
+            continue
+        fi
+
+        # also skip if it's got debugging arguments
+        KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "^args=")
+        if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
+            display_event "Denied" "${INDEX_TITLE} evaluated and skipped because it contains debugging kernel arguments"
+            continue
+        fi
+
+        if grubby --set-default-index="${entry_index}"; then
+            display_event "Update" "Selected ${INDEX_TITLE} as the new default entry"
+            DEFAULT_CHANGED="TRUE"
+            break
+        else
+            display_event "Error" "Could not set ${INDEX_TITLE} as default, continuing search"
+        fi
+    done
+
+    if [ "${DEFAULT_CHANGED}" = "FALSE" ]; then
+        display_event "Error" "Could not find a suitable default entry without debugging"
+    fi
+fi
+
 exit_event 0
