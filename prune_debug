@@ -116,7 +116,7 @@ done
 CURRENT_DEFAULT_INDEX=$(grubby --default-index)
 CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^kernel=" | sed 's/^kernel=//')
-DEFAULT_CHANGED="FALSE"
+DEFAULT_CHANGED=0
 if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
     case "${ALLOW_DEBUGGING_DEFAULT}" in
         [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee])
@@ -147,14 +147,14 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
 
         if grubby --set-default-index="${entry_index}"; then
             display_event "Update" "Selected ${INDEX_TITLE} as the new default entry"
-            DEFAULT_CHANGED="TRUE"
+            DEFAULT_CHANGED=1
             break
         else
             display_event "Error" "Could not set ${INDEX_TITLE} as default, continuing search"
         fi
     done
 
-    if [ "${DEFAULT_CHANGED}" = "FALSE" ]; then
+    if [ ${DEFAULT_CHANGED} -eq 0 ]; then
         display_event "Error" "Could not find a suitable default entry without debugging"
     fi
 fi
