@@ -31,14 +31,11 @@ find_entry_by_title()
 
     display_event "Examine" "Searching for entry title - ${SEARCH_TITLE}"
 
-    for current_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
-    do
+    for current_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
         CURRENT_TITLE=$(grubby --info="${current_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 
         # do not do anything if this was empty
-        if [ -z "${CURRENT_TITLE}" ]; then
-            continue
-        fi
+        [ -z "${CURRENT_TITLE}" ] && continue
 
         if [ "${CURRENT_TITLE}" = "${SEARCH_TITLE}" ]; then
             echo "${current_index}"
@@ -105,14 +102,11 @@ fi
 # kernel entries only
 ######################################################################
 display_event "Examine" "Searching for distribution provided debugging entries"
-for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
-do
+for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
     INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 
     # do not do anything if this was empty
-    if [ -z "${INDEX_TITLE}" ]; then
-        continue
-    fi
+    [ -z "${INDEX_TITLE}" ] && continue
 
     if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
         display_event "Found" "Found distribution provided debugging entry - ${INDEX_TITLE}"
