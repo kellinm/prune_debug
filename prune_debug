@@ -80,14 +80,11 @@ fi
 ######################################################################
 # Remove the systemd.debug kernel arguments from non-debug kernels
 ######################################################################
-for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
-do
+for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
     INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 
     # do not do anything if this was empty
-    if [ -z "${INDEX_TITLE}" ]; then
-        continue
-    fi
+    [ -z "${INDEX_TITLE}" ] && continue
 
     display_event "Examine" "${INDEX_TITLE}"
 
@@ -99,13 +96,13 @@ do
     KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "^args=")
 
     if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
-            if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
-                    display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
-            else
-                    display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
-            fi
+        if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
+            display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
+        else
+            display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
+        fi
     else
-            display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
+        display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
     fi
 done
 
