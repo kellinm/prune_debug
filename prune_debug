@@ -32,7 +32,7 @@ find_entry_by_title()
     for current_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
     do
         CURRENT_TITLE=$(grubby --info="${current_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
-    
+
         # do not do anything if this was empty
         if [ -z "${CURRENT_TITLE}" ]; then
             continue
