@@ -7,7 +7,8 @@
 
 PATH=/usr/bin:/usr/sbin
 EPOCH_DATE=$(date +"%s")
-LOG_FILE="/var/log/grubby_prune_debug"
+LOG_DIR="/var/log"
+LOG_FILE="${LOG_DIR}/grubby_prune_debug"
 
 display_event()
 {
@@ -45,6 +46,8 @@ find_entry_by_title()
         fi
     done
 }
+
+[ -d "${LOG_DIR}" ] || mkdir -p -m 0755 "${LOG_DIR}"
 
 display_event "Start" "Begin search for extraneous debug arguments"
 
