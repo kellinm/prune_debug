@@ -41,12 +41,12 @@ GRUB_CFG_BK=
 GRUB_EFI_CFG=
 GRUB_EFI_CFG_BK=
 
-if [ -e "/etc/grub2.cfg" ]; then
+if [ -f "/etc/grub2.cfg" ]; then
     GRUB_CFG=$(realpath "/etc/grub2.cfg")
     GRUB_CFG_BK="${GRUB_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
-if [ -e "/etc/grub2-efi.cfg" ]; then
+if [ -f "/etc/grub2-efi.cfg" ]; then
     GRUB_EFI_CFG=$(realpath "/etc/grub2-efi.cfg")
     GRUB_EFI_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
 fi
