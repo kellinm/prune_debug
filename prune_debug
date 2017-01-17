@@ -5,6 +5,7 @@
 # marked for debugging. See Red Hat bugzilla 1285601.
 ######################################################################
 
+PATH=/usr/bin
 EPOCH_DATE=$(date +"%s")
 LOG_FILE="/var/log/grubby_prune_debug"
 
