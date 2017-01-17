@@ -143,12 +143,12 @@ CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^ti
 CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^kernel=" | sed 's/^kernel=//')
 DEFAULT_CHANGED="FALSE"
 if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
-    shopt -s nocasematch
-    if [ "${ALLOW_DEBUGGING_DEFAULT}" = "YES" ] || [ "${ALLOW_DEBUGGING_DEFAULT}" = "TRUE" ]; then
-        display_event "Examine" "Detected user preference to allow debugging default entries if present"
-        exit_event 0
-    fi
-    shopt -u nocasematch
+    case "${ALLOW_DEBUGGING_DEFAULT}" in
+        [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee])
+            display_event "Examine" "Detected user preference to allow debugging default entries if present"
+            exit_event 0
+            ;;
+    esac
 
     display_event "Examine" "Search for entry without debugging to replace default entry - ${CURRENT_TITLE}"
 
