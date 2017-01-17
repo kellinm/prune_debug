@@ -51,11 +51,9 @@ if [ -f "/etc/grub2-efi.cfg" ]; then
     GRUB_EFI_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
-if [ -z "${GRUB_EFI_CFG}" ]; then
-    if [ -z "${GRUB_CFG}" ]; then
-        display_event "Error" "Could not find a grub configuration to back up"
-        exit_event 0
-    fi
+if [ -z "${GRUB_EFI_CFG}" ] && [ -z "${GRUB_CFG}" ]; then
+    display_event "Error" "Could not find a grub configuration to back up"
+    exit_event 0
 fi
 
 if [ -f "${GRUB_EFI_CFG}" ]; then
