@@ -5,8 +5,10 @@
 # marked for debugging. See Red Hat bugzilla 1285601.
 ######################################################################
 
+PATH=/usr/bin
 EPOCH_DATE=$(date +"%s")
-LOG_FILE="/var/log/grubby_prune_debug"
+LOG_DIR="/var/log"
+LOG_FILE="${LOG_DIR}/grubby_prune_debug"
 
 display_event()
 {
@@ -23,9 +25,10 @@ exit_event()
     exit $1
 }
 
+[ -d "${LOG_DIR}" ] || mkdir -p -m 0755 "${LOG_DIR}"
 display_event "Start" "Begin search for extraneous debug arguments"
 
-if [[ $EUID -ne 0 ]]; then
+if [ $(id -u) -ne 0 ]; then
     display_event "Error" "This script may only run as root."
     exit_event 0
 fi
@@ -38,21 +41,19 @@ GRUB_CFG_BK=
 GRUB_EFI_CFG=
 GRUB_EFI_CFG_BK=
 
-if [ -e "/etc/grub2.cfg" ]; then
+if [ -f "/etc/grub2.cfg" ]; then
     GRUB_CFG=$(realpath "/etc/grub2.cfg")
     GRUB_CFG_BK="${GRUB_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
-if [ -e "/etc/grub2-efi.cfg" ]; then
+if [ -f "/etc/grub2-efi.cfg" ]; then
     GRUB_EFI_CFG=$(realpath "/etc/grub2-efi.cfg")
     GRUB_EFI_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
-if [ -z "${GRUB_EFI_CFG}" ]; then
-    if [ -z "${GRUB_CFG}" ]; then
-        display_event "Error" "Could not find a grub configuration to back up"
-        exit_event 0
-    fi
+if [ -z "${GRUB_EFI_CFG}" ] && [ -z "${GRUB_CFG}" ]; then
+    display_event "Error" "Could not find a grub configuration to back up"
+    exit_event 0
 fi
 
 if [ -f "${GRUB_EFI_CFG}" ]; then
@@ -79,14 +80,11 @@ fi
 ######################################################################
 # Remove the systemd.debug kernel arguments from non-debug kernels
 ######################################################################
-for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//')
-do
+for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
     INDEX_TITLE=$(grubby --info="${entry_index}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 
     # do not do anything if this was empty
-    if [ -z "${INDEX_TITLE}" ]; then
-        continue
-    fi
+    [ -z "${INDEX_TITLE}" ] && continue
 
     display_event "Examine" "${INDEX_TITLE}"
 
@@ -98,13 +96,13 @@ do
     KERNEL_ARGS=$(grubby --info="${entry_index}" 2> /dev/null |grep "^args=")
 
     if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
-            if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
-                    display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
-            else
-                    display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
-            fi
+        if grubby --update-kernel="${entry_index}" --remove-args="systemd.debug"; then
+            display_event "Update" "Removed debugging arguments for ${INDEX_TITLE}"
+        else
+            display_event "Error" "grubby failed to remove debug argument from ${INDEX_TITLE}"
+        fi
     else
-            display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
+        display_event "Skip" "No debugging arguments to remove for ${INDEX_TITLE}"
     fi
 done
 
@@ -118,14 +116,14 @@ done
 CURRENT_DEFAULT_INDEX=$(grubby --default-index)
 CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
 CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^kernel=" | sed 's/^kernel=//')
-DEFAULT_CHANGED="FALSE"
+DEFAULT_CHANGED=0
 if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
-    shopt -s nocasematch
-    if [ "${ALLOW_DEBUGGING_DEFAULT}" = "YES" ] || [ "${ALLOW_DEBUGGING_DEFAULT}" = "TRUE" ]; then
-        display_event "Examine" "Detected user preference to allow debugging default entries if present"
-        exit_event 0
-    fi
-    shopt -u nocasematch
+    case "${ALLOW_DEBUGGING_DEFAULT}" in
+        [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee])
+            display_event "Examine" "Detected user preference to allow debugging default entries if present"
+            exit_event 0
+            ;;
+    esac
     display_event "Examine" "Search for entry without debugging to replace default entry - ${CURRENT_TITLE}"
 
     # search for the first non-debugging kernel entry with the same kernel as current
@@ -149,14 +147,14 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
 
         if grubby --set-default-index="${entry_index}"; then
             display_event "Update" "Selected ${INDEX_TITLE} as the new default entry"
-            DEFAULT_CHANGED="TRUE"
+            DEFAULT_CHANGED=1
             break
         else
             display_event "Error" "Could not set ${INDEX_TITLE} as default, continuing search"
         fi
     done
 
-    if [ "${DEFAULT_CHANGED}" = "FALSE" ]; then
+    if [ ${DEFAULT_CHANGED} -eq 0 ]; then
         display_event "Error" "Could not find a suitable default entry without debugging"
     fi
 fi
