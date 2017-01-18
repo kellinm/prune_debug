@@ -144,7 +144,7 @@ CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^k
 DEFAULT_CHANGED="FALSE"
 if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
     case "${ALLOW_DEBUGGING_DEFAULT}" in
-        [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee])
+        [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|1)
             display_event "Examine" "Detected user preference to allow debugging default entries if present"
             exit_event 0
             ;;
