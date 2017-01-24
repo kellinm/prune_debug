@@ -102,8 +102,8 @@ for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
         if [ -n "${NON_DEBUG_INDEX}" ]; then
             display_event "Found" "Found matching non-debugging entry - ${NON_DEBUG_TITLE}"
             KERNEL_ARGS=$(grubby --info="${NON_DEBUG_INDEX}" 2> /dev/null |grep "^args=")
-            if echo "${KERNEL_ARGS}" | grep -q "systemd\.debug"; then
-                if grubby --update-kernel="${NON_DEBUG_INDEX}" --remove-args="systemd.debug"; then
+            if echo "${KERNEL_ARGS}" | grep -E -q 'systemd.debug|systemd.log_level=debug|systemd.log_target=kmsg'; then
+                if grubby --update-kernel="${NON_DEBUG_INDEX}" --remove-args="systemd.debug systemd.log_level=debug systemd.log_target=kmsg"; then
                     display_event "Update" "Removed debugging arguments for ${NON_DEBUG_TITLE}"
                 else
                     display_event "Error" "grubby failed to remove debug argument from ${NON_DEBUG_TITLE}"
