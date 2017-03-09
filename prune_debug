@@ -65,6 +65,9 @@ if [ -f "/etc/grub2.cfg" ]; then
 elif [ -f "/etc/grub2-efi.cfg" ]; then
     BOOTLOADER_CFG=$(realpath "/etc/grub2-efi.cfg")
     BOOTLOADER_CFG_BK="${BOOTLOADER_CFG}.${EPOCH_DATE}.rpmsave"
+elif [ -f "/etc/zipl.conf" ]; then
+    BOOTLOADER_CFG=$(realpath "/etc/zipl.conf")
+    BOOTLOADER_CFG_BK="${BOOTLOADER_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
 if [ -z "${BOOTLOADER_CFG}" ]; then
@@ -138,7 +141,14 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
 
     unset NON_DEBUG_INDEX
     unset NON_DEBUG_TITLE
-    NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/ with debugging$//')
+
+    ARCH=$(uname -m)
+    if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+        NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/_with_debugging$//')
+    else
+        NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/ with debugging$//')
+    fi
+
     NON_DEBUG_INDEX=$(find_entry_by_title "${NON_DEBUG_TITLE}")
 
     if [ -n "${NON_DEBUG_INDEX}" ]; then
