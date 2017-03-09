@@ -48,7 +48,7 @@ find_entry_by_title()
 
 display_event "Start" "Begin search for extraneous debug arguments"
 
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
     display_event "Error" "This script may only run as root."
     exit_event 0
 fi
@@ -126,8 +126,6 @@ done
 
 CURRENT_DEFAULT_INDEX=$(grubby --default-index)
 CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
-CURRENT_KERNEL=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^kernel=" | sed 's/^kernel=//')
-DEFAULT_CHANGED="FALSE"
 if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
     case "${ALLOW_DEBUGGING_DEFAULT}" in
         [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|1)
@@ -146,7 +144,6 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
     if [ -n "${NON_DEBUG_INDEX}" ]; then
         if grubby --set-default-index="${NON_DEBUG_INDEX}"; then
             display_event "Update" "Selected ${NON_DEBUG_TITLE} as the new default entry"
-            break
         else
             display_event "Error" "Could not set ${NON_DEBUG_TITLE} as default"
         fi
