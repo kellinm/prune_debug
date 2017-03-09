@@ -56,28 +56,28 @@ fi
 ######################################################################
 # Back up the grub.cfg for sanity
 ######################################################################
-GRUB_CFG=
-GRUB_CFG_BK=
+BOOTLOADER_CFG=
+BOOTLOADER_CFG_BK=
 
 if [ -f "/etc/grub2.cfg" ]; then
-    GRUB_CFG=$(realpath "/etc/grub2.cfg")
-    GRUB_CFG_BK="${GRUB_CFG}.${EPOCH_DATE}.rpmsave"
+    BOOTLOADER_CFG=$(realpath "/etc/grub2.cfg")
+    BOOTLOADER_CFG_BK="${BOOTLOADER_CFG}.${EPOCH_DATE}.rpmsave"
 elif [ -f "/etc/grub2-efi.cfg" ]; then
-    GRUB_CFG=$(realpath "/etc/grub2-efi.cfg")
-    GRUB_CFG_BK="${GRUB_EFI_CFG}.${EPOCH_DATE}.rpmsave"
+    BOOTLOADER_CFG=$(realpath "/etc/grub2-efi.cfg")
+    BOOTLOADER_CFG_BK="${BOOTLOADER_CFG}.${EPOCH_DATE}.rpmsave"
 fi
 
-if [ -z "${GRUB_CFG}" ]; then
-    display_event "Error" "Could not find a grub configuration to back up"
+if [ -z "${BOOTLOADER_CFG}" ]; then
+    display_event "Error" "Could not find a bootloader configuration to back up"
     exit_event 0
 fi
 
-if [ -f "${GRUB_CFG}" ]; then
-    if cp -a "${GRUB_CFG}" "${GRUB_CFG_BK}" 2> /dev/null; then
+if [ -f "${BOOTLOADER_CFG}" ]; then
+    if cp -a "${BOOTLOADER_CFG}" "${BOOTLOADER_CFG_BK}" 2> /dev/null; then
         display_event "Copied" \
-            "Current configuration backed up to ${GRUB_CFG_BK}"
+            "Current configuration backed up to ${BOOTLOADER_CFG_BK}"
     else
-        display_event "Error" "Could not write ${GRUB_CFG_BK}"
+        display_event "Error" "Could not write ${BOOTLOADER_CFG_BK}"
         exit_event 0
     fi
 fi
