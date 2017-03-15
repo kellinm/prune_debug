@@ -88,6 +88,15 @@ if [ -f "${BOOTLOADER_CFG}" ]; then
     fi
 fi
 
+######################################################################
+#  Figure out what the debugging tag will look like
+######################################################################
+ARCH=$(uname -m)
+if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
+    DEBUGGING_TAG="_with_debugging"
+else
+    DEBUGGING_TAG=" with debugging"
+fi
 
 ######################################################################
 # Remove the systemd.debug kernel arguments from standard non-debug
@@ -100,9 +109,9 @@ for entry_index in $(grubby --info=ALL|grep "^index="| sed 's/^index=//') ; do
     # do not do anything if this was empty
     [ -z "${INDEX_TITLE}" ] && continue
 
-    if echo "${INDEX_TITLE}" | grep -q "with debugging$"; then
+    if echo "${INDEX_TITLE}" | grep -q "${DEBUGGING_TAG}$"; then
         display_event "Found" "Found distribution provided debugging entry - ${INDEX_TITLE}"
-        NON_DEBUG_TITLE=$(echo "${INDEX_TITLE}" | sed 's/ with debugging$//')
+        NON_DEBUG_TITLE=$(echo "${INDEX_TITLE}" | sed "s/${DEBUGGING_TAG}$//")
         NON_DEBUG_INDEX=$(find_entry_by_title "${NON_DEBUG_TITLE}")
 
         if [ -n "${NON_DEBUG_INDEX}" ]; then
@@ -132,7 +141,7 @@ done
 
 CURRENT_DEFAULT_INDEX=$(grubby --default-index)
 CURRENT_TITLE=$(grubby --info="${CURRENT_DEFAULT_INDEX}" 2> /dev/null |grep "^title=" | sed 's/^title=//')
-if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
+if echo "${CURRENT_TITLE}" | grep -q "${DEBUGGING_TAG}$"; then
     case "${ALLOW_DEBUGGING_DEFAULT}" in
         [Yy][Ee][Ss]|[Tt][Rr][Uu][Ee]|1)
             display_event "Examine" "Detected user preference to allow debugging default entries if present"
@@ -146,11 +155,7 @@ if echo "${CURRENT_TITLE}" | grep -q "with debugging$"; then
     unset NON_DEBUG_TITLE
 
     ARCH=$(uname -m)
-    if [ $ARCH = 's390' -o $ARCH = 's390x' ]; then
-        NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/_with_debugging$//')
-    else
-        NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed 's/ with debugging$//')
-    fi
+    NON_DEBUG_TITLE=$(echo "${CURRENT_TITLE}" | sed "s/${DEBUGGING_TAG}$//")
 
     NON_DEBUG_INDEX=$(find_entry_by_title "${NON_DEBUG_TITLE}")
 
